@@ -33,14 +33,14 @@ using namespace std;
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))  // Macro for indexing vertex buffer
 
 #define NUM_MESHES   2
-#define NUM_SHADERS	 3
+#define NUM_SHADERS	 4
 #define NUM_TEXTURES 1
 
 bool firstMouse = true;
 bool keys[1024];
-Camera camera(vec3(0.0f, 0.0f, 2.0f));
+Camera camera(vec3(0.0f, 0.0f, 4.0f));
 enum Meshes { CUBE_MESH, POINT_MESH };
-enum Shaders { SKYBOX, PARTICLE_SHADER, BASIC_TEXTURE_SHADER };
+enum Shaders { SKYBOX, PARTICLE_SHADER, BASIC_TEXTURE_SHADER, LIGHT_SHADER };
 enum Textures { OBJECT_TEXTURE };
 GLfloat cameraSpeed = 0.005f;
 GLfloat deltaTime = 1.0f / 60.0f;
@@ -51,10 +51,10 @@ int screenHeight = 800;
 int stringIDs[3];
 Mesh lineMesh, pointMesh, triangleMesh, pyramidMesh;
 vec3 closestPoint = vec3(0.0f, 0.0f, 0.0f);
-vec3 point1 = vec3(-1.0f, -1.0f, 1.0f);
-vec3 point2 = vec3(1.0f, -1.0f, 1.0f);
+vec3 point1 = vec3(-1.0f, -1.0f, 0.577f);
+vec3 point2 = vec3(1.0f, -1.0f, 0.577f);
 vec3 point3 = vec3(0.0f, 1.0f, 0.0f);
-vec3 point4 = vec3(0.0f, -1.0f, -1.0f);
+vec3 point4 = vec3(0.0f, -1.0f, -1.166f);
 vec3 point0 = vec3(0.0f, -1.0f, 0.0f);
 
 vec4 upV = vec4(0.0f, 1.0f, 0.0f, 0.0f);
@@ -68,8 +68,8 @@ const char * meshFiles[NUM_MESHES] = { "../Meshes/cube.dae", "../Meshes/particle
 const char * skyboxTextureFiles[6] = { "../Textures/DSposx.png", "../Textures/DSnegx.png", "../Textures/DSposy.png", "../Textures/DSnegy.png", "../Textures/DSposz.png", "../Textures/DSnegz.png"};
 const char * textureFiles[NUM_TEXTURES] = { "../Textures/asphalt.jpg" };
 
-const char * vertexShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxVertexShader.txt", "../Shaders/ParticleVertexShader.txt", "../Shaders/BasicTextureVertexShader.txt" };
-const char * fragmentShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxFragmentShader.txt", "../Shaders/ParticleFragmentShader.txt", "../Shaders/BasicTextureFragmentShader.txt" };
+const char * vertexShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxVertexShader.txt", "../Shaders/ParticleVertexShader.txt", "../Shaders/BasicTextureVertexShader.txt", "../Shaders/LightVertexShader.txt" };
+const char * fragmentShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxFragmentShader.txt", "../Shaders/ParticleFragmentShader.txt", "../Shaders/BasicTextureFragmentShader.txt", "../Shaders/LightFragmentShader.txt" };
 
 string frf(const float &f)
 {
@@ -100,9 +100,9 @@ void draw_text()
 
 void init_text()
 {
-	stringIDs[0] = add_text("Distance: ", -0.95f, 0.95f, 20.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-	stringIDs[1] = add_text("Point Location (,,)", -0.95f, 0.9f, 20.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-	stringIDs[2] = add_text("Closest Point (,,)", -0.95f, 0.85f, 20.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+	stringIDs[0] = add_text("Distance: ", -0.95f, 0.95f, 25.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+	stringIDs[1] = add_text("Point Location (,,)", -0.95f, 0.9f, 25.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+	stringIDs[2] = add_text("Closest Point (,,)", -0.95f, 0.85f, 25.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void display() 
@@ -123,9 +123,13 @@ void display()
 	//triangleMesh.drawMesh(view, projection, triangle_model, triangle_colour);
 
 	mat4 pyramid_model = rotationMat;
-	vec4 pyramid_colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
+	vec4 pyramid_colour = vec4(1.0f, 0.2f, 0.2f, 1.0f);
+	vec4 light_colour = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	vec4 light_position = vec4(5.0f, 5.0f, 5.0f, 0.0f);
+	vec4 view_position = vec4(camera.Position.v[0], camera.Position.v[1], camera.Position.v[2], 0.0f);
 
-	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour);
+	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour/*, light_colour, light_position, view_position*/);
+	pyramidMesh.drawLine(view, projection, pyramid_model, vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 	GLfloat line_vertices[] = {
 		point0.v[0], point0.v[1], point0.v[2],
@@ -140,13 +144,13 @@ void display()
 	lineMesh.drawLine(view, projection, line_model, line_colour);
 	
 	mat4 point_model = identity_mat4();
-	point_model = scale(point_model, vec3(0.02f, 0.02f, 0.02f));
+	point_model = scale(point_model, vec3(0.03f, 0.03f, 0.03f));
 	point_model = translate(point_model, point0);
 	vec4 point_colour = vec4(0.2f, 1.0f, 0.2f, 0.8f);
 	pointMesh.drawMesh(view, projection, point_model, point_colour);
 
 	mat4 closest_model = identity_mat4();
-	closest_model = scale(closest_model, vec3(0.02f, 0.02f, 0.02f));
+	closest_model = scale(closest_model, vec3(0.03f, 0.03f, 0.03f));
 	closest_model = translate(closest_model, closestPoint);
 	vec4 closest_colour = vec4(0.2f, 0.2f, 1.0f, 0.8f);
 	pointMesh.drawMesh(view, projection, closest_model, closest_colour);
@@ -190,36 +194,19 @@ void processInput()
 	if (keys['x'])
 		point0 += vec3(0.0f, 0.0f, 0.001f);
 
-	/*if (keys['q'])
-	{
+	/*if (keys['t'])
 		applyYaw(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerYaw(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}
-	if (keys['w'])
-	{
+	if (keys['y'])
 		applyYaw(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerYaw(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}
-	if (keys['a'])
-	{
+	if (keys['g'])
 		applyRoll(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerRoll(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}
-	if (keys['s'])
-	{
+	if (keys['h'])
 		applyRoll(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerRoll(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}
-	if (keys['z'])
-	{
+	if (keys['b'])
 		applyPitch(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerPitch(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}
-	if (keys['x'])
-	{
-		applyPitch(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
-		//applyEulerPitch(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
-	}*/
+	if (keys['n'])
+		applyPitch(radians(1.0f), rotationMat, upV, fV, rightV, orientation);*/
+
 	if (keys[(char)27])
 		exit(0);
 }
@@ -278,8 +265,8 @@ void init()
 		point3.v[0], point3.v[1], point3.v[2],
 
 		point1.v[0], point1.v[1], point1.v[2],
-		point3.v[0], point3.v[1], point3.v[2],
 		point4.v[0], point4.v[1], point4.v[2],
+		point3.v[0], point3.v[1], point3.v[2],
 
 		point4.v[0], point4.v[1], point4.v[2],
 		point2.v[0], point2.v[1], point2.v[2],
@@ -310,7 +297,32 @@ void init()
 void pressNormalKeys(unsigned char key, int x, int y)
 {
 	keys[key] = true;
-	
+	if (keys['1'])
+		point0 = point1 * 2;
+	if (keys['2'])
+		point0 = point2 * 2;
+	if (keys['3'])
+		point0 = point3 * 2;
+	if (keys['4'])
+		point0 = point4 * 2;
+	if (keys['5'])
+		point0 = vec3(0.0f, -2.0f, 2.0f);
+	if (keys['6'])
+		point0 = vec3(-2.0f, -2.0f, -2.0f);
+	if (keys['7'])
+		point0 = vec3(2.0f, -2.0f, -2.0f);
+	if (keys['8'])
+		point0 = vec3(0.0f, 1.0f, 2.0f);
+	if (keys['9'])
+		point0 = vec3(1.0f, 0.5f, -0.5f);
+	if (keys['0'])
+	{
+		point0 = vec3(0.0f, 0.0f, 0.0f);
+		orientation.q[0] = 0.0f;
+		orientation.q[1] = 0.0f;
+		orientation.q[2] = 1.0f;
+		orientation.q[3] = 0.0f;
+	}
 }
 
 void releaseNormalKeys(unsigned char key, int x, int y)

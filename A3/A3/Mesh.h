@@ -37,6 +37,7 @@ public:
 	void generateObjectBufferMesh(GLfloat* vertices, int numVertices);
 	bool loadTexture(const char* fileName);
 	void drawMesh(mat4 view, mat4 projection, mat4 model, vec4 colour);
+	void drawMesh(mat4 view, mat4 projection, mat4 model, vec4 objectColour, vec4 lightColour, vec4 lightPosition, vec4 viewPosition);
 	void drawLine(mat4 view, mat4 projection, mat4 model, vec4 colour);
 	void drawPoint(mat4 view, mat4 projection, mat4 model, vec4 colour);
 
@@ -170,11 +171,15 @@ void Mesh::generateObjectBufferMesh(GLfloat* vertices, int numVertices)
 	}
 
 	GLuint loc1 = glGetAttribLocation(shaderProgramID, "vertex_position");
+	GLuint loc2 = glGetAttribLocation(shaderProgramID, "vertex_normal");
 
 	unsigned int position_vbo = 0;
 	glGenBuffers(1, &position_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
 	glBufferData(GL_ARRAY_BUFFER, vertex_count * 3 * sizeof(float), &vertex_positions[0], GL_STATIC_DRAW);
+	unsigned int normal_vbo = 0;
+	glGenBuffers(1, &normal_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
 
 	glGenVertexArrays(1, &meshVAO);
 	glBindVertexArray(meshVAO);
@@ -182,6 +187,9 @@ void Mesh::generateObjectBufferMesh(GLfloat* vertices, int numVertices)
 	glEnableVertexAttribArray(loc1);
 	glBindBuffer(GL_ARRAY_BUFFER, position_vbo);
 	glVertexAttribPointer(loc1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	glEnableVertexAttribArray(loc2);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
+	glVertexAttribPointer(loc2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
 	glBindVertexArray(0);
 }
@@ -237,6 +245,30 @@ void Mesh::drawMesh(mat4 view, mat4 projection, mat4 model, vec4 colour = vec4(0
 	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 }
 
+void Mesh::drawMesh(mat4 view, mat4 projection, mat4 model, vec4 objectColour, vec4 lightColour, vec4 lightPosition, vec4 viewPosition)
+{
+	glUseProgram(shaderProgramID);
+	glBindVertexArray(meshVAO);
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgramID, "view"), 1, GL_FALSE, view.m);
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgramID, "projection"), 1, GL_FALSE, projection.m);
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgramID, "model"), 1, GL_FALSE, model.m);
+	
+	glUniform4fv(glGetUniformLocation(shaderProgramID, "objectColour"), 1, objectColour.v);
+	glUniform4fv(glGetUniformLocation(shaderProgramID, "lightColour"), 1, lightColour.v);
+	glUniform4fv(glGetUniformLocation(shaderProgramID, "lightPosition"), 1, lightPosition.v);
+	glUniform4fv(glGetUniformLocation(shaderProgramID, "viewPosition"), 1, viewPosition.v);
+
+	if (hasTexture)
+	{
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glUniform1i(glGetUniformLocation(shaderProgramID, "basic_texture"), 0);
+	}
+
+	//glUniform4fv(glGetUniformLocation(shaderProgramID, "colour"), 1, colour.v);
+
+	glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+}
+
 void Mesh::drawLine(mat4 view, mat4 projection, mat4 model, vec4 colour = vec4(0.0f, 0.0f, 0.0f, 0.0f))
 {
 	glUseProgram(shaderProgramID);
@@ -253,7 +285,7 @@ void Mesh::drawLine(mat4 view, mat4 projection, mat4 model, vec4 colour = vec4(0
 
 	glUniform4fv(glGetUniformLocation(shaderProgramID, "colour"), 1, colour.v);
 
-	glDrawArrays(GL_LINES, 0, vertex_count);
+	glDrawArrays(GL_LINE_STRIP, 0, vertex_count);
 }
 
 void Mesh::drawPoint(mat4 view, mat4 projection, mat4 model, vec4 colour = vec4(0.0f, 0.0f, 0.0f, 0.0f))
