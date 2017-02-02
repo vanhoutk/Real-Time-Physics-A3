@@ -177,7 +177,7 @@ float pointToTriangleVoronoi(vec3 p0, vec3 p1, vec3 p2, vec3 p3)
 	else
 	{
 		// Voronoi region of triangle face <p1, p2, p3>
-		vec3 n_hat = cross(p2p1, p3p1);
+		vec3 n_hat = normalise(cross(p2p1, p3p1));
 		return pointToPlane(p0, n_hat, p1);
 	}
 }
@@ -245,7 +245,7 @@ vec3 closestPointOnTriangleVoronoi(vec3 p0, vec3 p1, vec3 p2, vec3 p3)
 	else
 	{
 		// Voronoi region of triangle face <p1, p2, p3>
-		vec3 n_hat = cross(p2p1, p3p1);
+		vec3 n_hat = normalise(cross(p2p1, p3p1));
 		return closestPointOnPlane(p0, n_hat, p1);
 	}
 }
@@ -257,5 +257,141 @@ vec4 closestPointOnTriangleVoronoi(vec4 p0, vec4 p1, vec4 p2, vec4 p3)
 												vec3(p1.v[0], p1.v[1], p1.v[2]), 
 												vec3(p2.v[0], p2.v[1], p2.v[2]),
 												vec3(p3.v[0], p3.v[1], p3.v[2]));
+	return vec4(result.v[0], result.v[1], result.v[2], 0.0f);
+}
+
+// Given a point p0 and a pyramid defined by four vertices, p1, p2, p3, p4
+vec3 closestPointOnPyramidVoronoi(vec3 p0, vec3 p1, vec3 p2, vec3 p3, vec3 p4)
+{
+	vec3 p0p1 = p0 - p1;
+	vec3 p2p1 = p2 - p1;
+	vec3 p3p1 = p3 - p1;
+	vec3 p4p1 = p4 - p1;
+
+	vec3 p0p2 = p0 - p2;
+	vec3 p1p2 = p1 - p2;
+	vec3 p3p2 = p3 - p2;
+	vec3 p4p2 = p4 - p2;
+
+	vec3 p0p3 = p0 - p3;
+	vec3 p1p3 = p1 - p3;
+	vec3 p2p3 = p2 - p3;
+	vec3 p4p3 = p4 - p3;
+
+	vec3 p0p4 = p0 - p4;
+	vec3 p1p4 = p1 - p4;
+	vec3 p2p4 = p2 - p4;
+	vec3 p3p4 = p3 - p4;
+
+	if (dot(p0p1, p2p1) <= 0 && 
+		dot(p0p1, p3p1) <= 0 &&
+		dot(p0p1, p4p1) <= 0)
+	{
+		// Voronoi region of p1
+		return p1;
+	}
+	else if (dot(p0p2, p1p2) <= 0 && 
+			 dot(p0p2, p3p2) <= 0 &&
+			 dot(p0p2, p4p2) <= 0)
+	{
+		// Voronoi region of p2
+		return p2;
+	}
+	else if (dot(p0p3, p1p3) <= 0 && 
+			 dot(p0p3, p2p3) <= 0 &&
+			 dot(p0p3, p4p3) <= 0)
+	{
+		// Voronoi region of p3
+		return p3;
+	}
+	else if (dot(p0p4, p1p4) <= 0 &&
+			 dot(p0p4, p2p4) <= 0 &&
+			 dot(p0p4, p3p4) <= 0)
+	{
+		// Voronoi region of p4
+		return p4;
+	}
+	else if (dot(cross(p2p1, cross(p2p1, p3p1)), p0p1) >= 0 &&
+		dot(cross(cross(p4p1, p2p1), p2p1), p0p1) >= 0 &&
+		dot(p0p1, p2p1) >= 0 &&
+		dot(p0p2, p1p2) >= 0)
+	{
+		// Voronoi region of edge <p1, p2>
+		return closestPointOnEdgeVoronoi(p0, p1, p2);
+	}
+	else if (dot(cross(p3p2, cross(p3p2, p1p2)), p0p2) >= 0 &&
+		dot(cross(cross(p4p2, p3p2), p3p2), p0p2) >= 0 &&
+		dot(p0p2, p3p2) >= 0 &&
+		dot(p0p3, p2p3) >= 0)
+	{
+		// Voronoi region of edge <p2, p3>
+		return closestPointOnEdgeVoronoi(p0, p2, p3);
+	}
+	else if (dot(cross(p1p3, cross(p1p3, p2p3)), p0p3) >= 0 &&
+		dot(cross(cross(p4p3, p1p3), p1p3), p0p3) >= 0 &&
+		dot(p0p3, p1p3) >= 0 &&
+		dot(p0p1, p3p1) >= 0)
+	{
+		// Voronoi region of edge <p3, p1>
+		return closestPointOnEdgeVoronoi(p0, p3, p1);
+	}
+	else if (dot(cross(p4p1, cross(p4p1, p3p1)), p0p1) >= 0 &&
+		dot(cross(cross(p2p1, p4p1), p4p1), p0p1) >= 0 &&
+		dot(p0p1, p4p1) >= 0 &&
+		dot(p0p4, p1p4) >= 0)
+	{
+		// Voronoi region of edge <p1, p4>
+		return closestPointOnEdgeVoronoi(p0, p1, p4);
+	}
+	else if (dot(cross(p4p2, cross(p4p2, p1p2)), p0p2) >= 0 &&
+		dot(cross(cross(p3p2, p4p2), p4p2), p0p2) >= 0 &&
+		dot(p0p2, p4p2) >= 0 &&
+		dot(p0p4, p2p4) >= 0)
+	{
+		// Voronoi region of edge <p2, p4>
+		return closestPointOnEdgeVoronoi(p0, p2, p4);
+	}
+	else if (dot(cross(p4p3, cross(p4p3, p2p3)), p0p3) >= 0 &&
+		dot(cross(cross(p1p3, p4p3), p4p3), p0p3) >= 0 &&
+		dot(p0p3, p4p3) >= 0 &&
+		dot(p0p4, p3p4) >= 0)
+	{
+		// Voronoi region of edge <p3, p4>
+		return closestPointOnEdgeVoronoi(p0, p3, p4);
+	}
+	else if (dot(p0p1, cross(p2p1, p3p1)) * dot(p4p1, cross(p2p1, p3p1)) < 0)
+	{
+		// Voronoi region of triangle face <p1, p2, p3>
+		vec3 n_hat = normalise(cross(p2p1, p3p1));
+		return closestPointOnPlane(p0, n_hat, p1);
+	}
+	else if (dot(p0p1, cross(p2p1, p4p1)) * dot(p3p1, cross(p2p1, p4p1)) < 0)
+	{
+		// Voronoi region of triangle face <p1, p2, p4>
+		vec3 n_hat = normalise(cross(p2p1, p4p1));
+		return closestPointOnPlane(p0, n_hat, p1);
+	}
+	else if (dot(p0p1, cross(p4p1, p3p1)) * dot(p2p1, cross(p4p1, p3p1)) < 0)
+	{
+		// Voronoi region of triangle face <p1, p4, p3>
+		vec3 n_hat = normalise(cross(p4p1, p3p1));
+		return closestPointOnPlane(p0, n_hat, p1);
+	}
+	else if (dot(p0p2, cross(p3p2, p4p2)) * dot(p1p2, cross(p3p2, p4p2)) < 0)
+	{
+		// Voronoi region of triangle face <p2, p3, p4>
+		vec3 n_hat = normalise(cross(p3p2, p4p2));
+		return closestPointOnPlane(p0, n_hat, p2);
+	}
+}
+
+// Given a point p0 and a pyramid defined by four vertices, p1, p2, p3, p4
+vec4 closestPointOnPyramidVoronoi(vec4 p0, vec4 p1, vec4 p2, vec4 p3, vec4 p4)
+{
+	vec3 result = closestPointOnPyramidVoronoi(vec3(p0.v[0], p0.v[1], p0.v[2]),
+		vec3(p1.v[0], p1.v[1], p1.v[2]),
+		vec3(p2.v[0], p2.v[1], p2.v[2]),
+		vec3(p3.v[0], p3.v[1], p3.v[2]),
+		vec3(p4.v[0], p4.v[1], p4.v[2]));
 	return vec4(result.v[0], result.v[1], result.v[2], 0.0f);
 }

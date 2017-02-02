@@ -19,6 +19,7 @@
 #include "Camera.h"
 #include "Distance.h"
 #include "Mesh.h"
+#include "PlaneRotation.h"
 #include "RigidBody.h"
 #include "Shader_Functions.h"
 #include "text.h"
@@ -37,7 +38,7 @@ using namespace std;
 
 bool firstMouse = true;
 bool keys[1024];
-Camera camera(vec3(2.0f, 2.0f, 2.0f));
+Camera camera(vec3(0.0f, 0.0f, 2.0f));
 enum Meshes { CUBE_MESH, POINT_MESH };
 enum Shaders { SKYBOX, PARTICLE_SHADER, BASIC_TEXTURE_SHADER };
 enum Textures { OBJECT_TEXTURE };
@@ -48,17 +49,24 @@ GLuint shaderProgramID[NUM_SHADERS];
 int screenWidth = 1000;
 int screenHeight = 800;
 int stringIDs[3];
-Mesh lineMesh, pointMesh, triangleMesh;
+Mesh lineMesh, pointMesh, triangleMesh, pyramidMesh;
 vec3 closestPoint = vec3(0.0f, 0.0f, 0.0f);
-vec3 point1 = vec3(-0.5f, -0.5f, 0.0f);
-vec3 point2 = vec3(0.5f, -0.5f, 0.0f);
-vec3 point3 = vec3(0.0f, 0.5f, 0.0f);
-vec3 point0 = vec3(0.5f, 0.5f, 0.0f);
+vec3 point1 = vec3(-1.0f, -1.0f, 1.0f);
+vec3 point2 = vec3(1.0f, -1.0f, 1.0f);
+vec3 point3 = vec3(0.0f, 1.0f, 0.0f);
+vec3 point4 = vec3(0.0f, -1.0f, -1.0f);
+vec3 point0 = vec3(0.0f, 0.0f, 2.0f);
+
+vec4 upV = vec4(0.0f, 1.0f, 0.0f, 0.0f);
+vec4 fV = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+vec4 rightV = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+versor orientation;
+mat4 rotationMat;
 
 // | Resource Locations
 const char * meshFiles[NUM_MESHES] = { "../Meshes/cube.dae", "../Meshes/particle_reduced.dae" };
 const char * skyboxTextureFiles[6] = { "../Textures/DSposx.png", "../Textures/DSnegx.png", "../Textures/DSposy.png", "../Textures/DSnegy.png", "../Textures/DSposz.png", "../Textures/DSnegz.png"};
-const char * textureFiles[NUM_TEXTURES] = { "../Textures/plane.jpg" };
+const char * textureFiles[NUM_TEXTURES] = { "../Textures/asphalt.jpg" };
 
 const char * vertexShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxVertexShader.txt", "../Shaders/ParticleVertexShader.txt", "../Shaders/BasicTextureVertexShader.txt" };
 const char * fragmentShaderNames[NUM_SHADERS] = { "../Shaders/SkyboxFragmentShader.txt", "../Shaders/ParticleFragmentShader.txt", "../Shaders/BasicTextureFragmentShader.txt" };
@@ -75,15 +83,15 @@ void draw_text()
 {
 	ostringstream distanceOSS, pointOSS, closestOSS;
 	string distanceString, pointString, closestString;
-	//distanceOSS << "Distance: " << fixed << setprecision(3) << rigidBody.mass;
+	distanceOSS << "Distance: " << fixed << setprecision(3) << pointToPoint(point0, closestPoint);
 	pointOSS << "Point Location ( " << fixed << setprecision(3) << point0.v[0] << ", " << point0.v[1] << ", " << point0.v[2] << " )";
 	closestOSS << "Closest Point ( " << fixed << setprecision(3) << closestPoint.v[0] << ", " << closestPoint.v[1] << ", " << closestPoint.v[2] << " )";
 	
-	//distanceString = distanceOSS.str();
+	distanceString = distanceOSS.str();
 	pointString = pointOSS.str();
 	closestString = closestOSS.str();
 	
-	//update_text(stringIDs[0], distanceString.c_str());
+	update_text(stringIDs[0], distanceString.c_str());
 	update_text(stringIDs[1], pointString.c_str());
 	update_text(stringIDs[2], closestString.c_str());
 
@@ -106,12 +114,18 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Draw skybox first
-	mat4 view = look_at(camera.Position, vec3(0.0f, 0.0f, 0.0f), camera.Up); //camera.GetViewMatrix();
+	//mat4 view = look_at(camera.Position, vec3(0.0f, 0.0f, 0.0f), camera.Up);
+	mat4 view = camera.GetViewMatrix();
 	mat4 projection = perspective(camera.Zoom, (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
-	mat4 triangle_model = identity_mat4();
-	vec4 triangle_colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
+	//mat4 triangle_model = identity_mat4();
+	//vec4 triangle_colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
 
-	triangleMesh.drawMesh(view, projection, triangle_model, triangle_colour);
+	//triangleMesh.drawMesh(view, projection, triangle_model, triangle_colour);
+
+	mat4 pyramid_model = rotationMat;
+	vec4 pyramid_colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
+
+	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour);
 
 	GLfloat line_vertices[] = {
 		point0.v[0], point0.v[1], point0.v[2],
@@ -162,6 +176,7 @@ void processInput()
 		camera.ProcessKeyboard(LEFT, cameraSpeed);
 	if (keys[GLUT_KEY_RIGHT])
 		camera.ProcessKeyboard(RIGHT, cameraSpeed);
+
 	if (keys['q'])
 		point0 += vec3(-0.001f, 0.0f, 0.0f);
 	if (keys['w'])
@@ -174,6 +189,37 @@ void processInput()
 		point0 += vec3(0.0f, 0.0f, -0.001f);
 	if (keys['x'])
 		point0 += vec3(0.0f, 0.0f, 0.001f);
+
+	/*if (keys['q'])
+	{
+		applyYaw(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerYaw(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}
+	if (keys['w'])
+	{
+		applyYaw(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerYaw(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}
+	if (keys['a'])
+	{
+		applyRoll(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerRoll(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}
+	if (keys['s'])
+	{
+		applyRoll(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerRoll(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}
+	if (keys['z'])
+	{
+		applyPitch(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerPitch(radians(-10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}
+	if (keys['x'])
+	{
+		applyPitch(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
+		//applyEulerPitch(radians(10.0f), eulerRotationMat, eulerUpV, eulerFV, eulerRightV);
+	}*/
 	if (keys[(char)27])
 		exit(0);
 }
@@ -181,7 +227,8 @@ void processInput()
 void updateScene()
 {
 	processInput();
-	closestPoint = closestPointOnTriangleVoronoi(point0, point1, point2, point3);
+	//closestPoint = closestPointOnTriangleVoronoi(point0, point1, point2, point3);
+	closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4);
 	//updateRigidBody();
 	// Draw the next frame
 	glutPostRedisplay();
@@ -202,6 +249,10 @@ void init()
 		shaderProgramID[i] = CompileShaders(vertexShaderNames[i], fragmentShaderNames[i]);
 	}
 
+	orientation = quat_from_axis_deg(0.0f, rightV.v[0], rightV.v[1], rightV.v[2]);
+	rotationMat = quat_to_mat4(orientation);
+	applyYaw(0.0f, rotationMat, upV, fV, rightV, orientation);
+
 	//skyboxMesh = Mesh(&shaderProgramID[SKYBOX]);
 	//skyboxMesh.setupSkybox(skyboxTextureFiles);
 
@@ -211,21 +262,44 @@ void init()
 
 	//rigidBody = RigidBody(objectMesh.vertex_count, objectMesh.vertex_positions);
 
-	GLfloat pointVertex[] = {
+	GLfloat point_vertex[] = {
 		0.0f, 0.0f, 0.0f
 	};
 
-	GLfloat triangleVertices[] = {
+	GLfloat triangle_vertices[] = {
 		point1.v[0], point1.v[1], point1.v[2],
 		point2.v[0], point2.v[1], point2.v[2],
 		point3.v[0], point3.v[1], point3.v[2]
 	};
 
-	triangleMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
-	triangleMesh.generateObjectBufferMesh(triangleVertices, 3);
+	GLfloat pyramid_vertices[] = {
+		point1.v[0], point1.v[1], point1.v[2],
+		point2.v[0], point2.v[1], point2.v[2],
+		point3.v[0], point3.v[1], point3.v[2],
+
+		point1.v[0], point1.v[1], point1.v[2],
+		point3.v[0], point3.v[1], point3.v[2],
+		point4.v[0], point4.v[1], point4.v[2],
+
+		point4.v[0], point4.v[1], point4.v[2],
+		point2.v[0], point2.v[1], point2.v[2],
+		point3.v[0], point3.v[1], point3.v[2],
+
+		point1.v[0], point1.v[1], point1.v[2],
+		point4.v[0], point4.v[1], point4.v[2],
+		point2.v[0], point2.v[1], point2.v[2]
+	};
 
 	pointMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
 	pointMesh.generateObjectBufferMesh(meshFiles[POINT_MESH]);
+
+	triangleMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+	triangleMesh.generateObjectBufferMesh(triangle_vertices, 3);
+
+	pyramidMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+	pyramidMesh.generateObjectBufferMesh(pyramid_vertices, 12);
+	//pyramidMesh.generateObjectBufferMesh(meshFiles[POINT_MESH]);
+	
 	//pointMesh.generateObjectBufferMesh(pointVertex, 1);
 }
 

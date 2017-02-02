@@ -301,7 +301,7 @@ void RigidBody::computeMassInertia(bool bodyCoords)
 }
 
 
-void multiplyQuat(versor &result, versor r, versor s)
+/*void multiplyQuat(versor &result, versor r, versor s)
 {
 	result.q[0] = s.q[0] * r.q[0] - s.q[1] * r.q[1] -
 		s.q[2] * r.q[2] - s.q[3] * r.q[3];
@@ -312,7 +312,7 @@ void multiplyQuat(versor &result, versor r, versor s)
 	result.q[3] = s.q[0] * r.q[3] - s.q[1] * r.q[2] +
 		s.q[2] * r.q[1] + s.q[3] * r.q[0];
 	normalise(result); // Re-normalise
-}
+}*/
 
 float quatMagnitude(versor v)
 {

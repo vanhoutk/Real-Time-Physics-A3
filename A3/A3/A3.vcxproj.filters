@@ -47,5 +47,8 @@
     <ClInclude Include="Distance.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PlaneRotation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
