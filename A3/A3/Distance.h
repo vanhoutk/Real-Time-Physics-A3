@@ -383,6 +383,11 @@ vec3 closestPointOnPyramidVoronoi(vec3 p0, vec3 p1, vec3 p2, vec3 p3, vec3 p4)
 		vec3 n_hat = normalise(cross(p3p2, p4p2));
 		return closestPointOnPlane(p0, n_hat, p2);
 	}
+	else
+	{
+		// The point is inside the object, so assuming a solid, the closest point is itself
+		return p0;
+	}
 }
 
 // Given a point p0 and a pyramid defined by four vertices, p1, p2, p3, p4

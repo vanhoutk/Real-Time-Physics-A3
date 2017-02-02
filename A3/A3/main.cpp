@@ -55,7 +55,7 @@ vec3 point1 = vec3(-1.0f, -1.0f, 1.0f);
 vec3 point2 = vec3(1.0f, -1.0f, 1.0f);
 vec3 point3 = vec3(0.0f, 1.0f, 0.0f);
 vec3 point4 = vec3(0.0f, -1.0f, -1.0f);
-vec3 point0 = vec3(0.0f, 0.0f, 2.0f);
+vec3 point0 = vec3(0.0f, -1.0f, 0.0f);
 
 vec4 upV = vec4(0.0f, 1.0f, 0.0f, 0.0f);
 vec4 fV = vec4(0.0f, 0.0f, 1.0f, 0.0f);
