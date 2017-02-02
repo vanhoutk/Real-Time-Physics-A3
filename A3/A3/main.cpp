@@ -31,14 +31,14 @@ using namespace std;
  */
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))  // Macro for indexing vertex buffer
 
-#define NUM_MESHES   1
+#define NUM_MESHES   2
 #define NUM_SHADERS	 3
 #define NUM_TEXTURES 1
 
 bool firstMouse = true;
 bool keys[1024];
-Camera camera(vec3(3.0f, 2.0f, 7.0f));
-enum Meshes { OBJECT_MESH };
+Camera camera(vec3(2.0f, 2.0f, 2.0f));
+enum Meshes { CUBE_MESH, POINT_MESH };
 enum Shaders { SKYBOX, PARTICLE_SHADER, BASIC_TEXTURE_SHADER };
 enum Textures { OBJECT_TEXTURE };
 GLfloat cameraSpeed = 0.005f;
@@ -56,7 +56,7 @@ vec3 point3 = vec3(0.0f, 0.5f, 0.0f);
 vec3 point0 = vec3(0.5f, 0.5f, 0.0f);
 
 // | Resource Locations
-const char * meshFiles[NUM_MESHES] = { "../Meshes/cube.dae" };
+const char * meshFiles[NUM_MESHES] = { "../Meshes/cube.dae", "../Meshes/particle_reduced.dae" };
 const char * skyboxTextureFiles[6] = { "../Textures/DSposx.png", "../Textures/DSnegx.png", "../Textures/DSposy.png", "../Textures/DSnegy.png", "../Textures/DSposz.png", "../Textures/DSnegz.png"};
 const char * textureFiles[NUM_TEXTURES] = { "../Textures/plane.jpg" };
 
@@ -106,21 +106,36 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Draw skybox first
-	mat4 view = camera.GetViewMatrix(); 
+	mat4 view = look_at(camera.Position, vec3(0.0f, 0.0f, 0.0f), camera.Up); //camera.GetViewMatrix();
 	mat4 projection = perspective(camera.Zoom, (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
-	mat4 model = identity_mat4();
-	vec4 colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
+	mat4 triangle_model = identity_mat4();
+	vec4 triangle_colour = vec4(1.0f, 0.2f, 0.2f, 0.8f);
 
-	triangleMesh.drawMesh(view, projection, model, colour);
+	triangleMesh.drawMesh(view, projection, triangle_model, triangle_colour);
+
+	GLfloat line_vertices[] = {
+		point0.v[0], point0.v[1], point0.v[2],
+		closestPoint.v[0], closestPoint.v[1], closestPoint.v[2]
+	};
+
+	lineMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+	lineMesh.generateObjectBufferMesh(line_vertices, 2);
+
+	mat4 line_model = identity_mat4();
+	vec4 line_colour = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	lineMesh.drawLine(view, projection, line_model, line_colour);
 	
-	model = translate(model, point0);
-	vec4 pointColour = vec4(0.2f, 1.0f, 0.2f, 0.8f);
-	pointMesh.drawPoint(view, projection, model, pointColour);
+	mat4 point_model = identity_mat4();
+	point_model = scale(point_model, vec3(0.02f, 0.02f, 0.02f));
+	point_model = translate(point_model, point0);
+	vec4 point_colour = vec4(0.2f, 1.0f, 0.2f, 0.8f);
+	pointMesh.drawMesh(view, projection, point_model, point_colour);
 
-	mat4 modelClosest = identity_mat4();
-	vec4 pointColour2 = vec4(0.2f, 0.2f, 1.0f, 0.8f);
-	modelClosest = translate(modelClosest, closestPoint);
-	pointMesh.drawPoint(view, projection, modelClosest, pointColour2);
+	mat4 closest_model = identity_mat4();
+	closest_model = scale(closest_model, vec3(0.02f, 0.02f, 0.02f));
+	closest_model = translate(closest_model, closestPoint);
+	vec4 closest_colour = vec4(0.2f, 0.2f, 1.0f, 0.8f);
+	pointMesh.drawMesh(view, projection, closest_model, closest_colour);
 
 	//skyboxMesh.drawSkybox(view, projection);
 
@@ -147,6 +162,18 @@ void processInput()
 		camera.ProcessKeyboard(LEFT, cameraSpeed);
 	if (keys[GLUT_KEY_RIGHT])
 		camera.ProcessKeyboard(RIGHT, cameraSpeed);
+	if (keys['q'])
+		point0 += vec3(-0.001f, 0.0f, 0.0f);
+	if (keys['w'])
+		point0 += vec3(0.001f, 0.0f, 0.0f);
+	if (keys['a'])
+		point0 += vec3(0.0f, -0.001f, 0.0f);
+	if (keys['s'])
+		point0 += vec3(0.0f, 0.001f, 0.0f);
+	if (keys['z'])
+		point0 += vec3(0.0f, 0.0f, -0.001f);
+	if (keys['x'])
+		point0 += vec3(0.0f, 0.0f, 0.001f);
 	if (keys[(char)27])
 		exit(0);
 }
@@ -198,7 +225,8 @@ void init()
 	triangleMesh.generateObjectBufferMesh(triangleVertices, 3);
 
 	pointMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
-	pointMesh.generateObjectBufferMesh(pointVertex, 1);
+	pointMesh.generateObjectBufferMesh(meshFiles[POINT_MESH]);
+	//pointMesh.generateObjectBufferMesh(pointVertex, 1);
 }
 
 /*
