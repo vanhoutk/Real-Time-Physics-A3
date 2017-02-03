@@ -50,12 +50,18 @@ int screenWidth = 1000;
 int screenHeight = 800;
 int stringIDs[3];
 Mesh lineMesh, pointMesh, triangleMesh, pyramidMesh;
+Mesh vertexMesh, edgeMesh, faceMesh;
 vec3 closestPoint = vec3(0.0f, 0.0f, 0.0f);
 vec3 point1 = vec3(-1.0f, -1.0f, 0.577f);
 vec3 point2 = vec3(1.0f, -1.0f, 0.577f);
 vec3 point3 = vec3(0.0f, 1.0f, 0.0f);
 vec3 point4 = vec3(0.0f, -1.0f, -1.166f);
 vec3 point0 = vec3(0.0f, -1.0f, 0.0f);
+
+int featureType = -1; // 0 - Vertex, 1 - Edge, 2 - Face
+vec3 p1 = vec3(0.0f, 0.0f, 0.0f);
+vec3 p2 = vec3(0.0f, 0.0f, 0.0f);
+vec3 p3 = vec3(0.0f, 0.0f, 0.0f);
 
 vec4 upV = vec4(0.0f, 1.0f, 0.0f, 0.0f);
 vec4 fV = vec4(0.0f, 0.0f, 1.0f, 0.0f);
@@ -128,7 +134,7 @@ void display()
 	vec4 light_position = vec4(5.0f, 5.0f, 5.0f, 0.0f);
 	vec4 view_position = vec4(camera.Position.v[0], camera.Position.v[1], camera.Position.v[2], 0.0f);
 
-	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour/*, light_colour, light_position, view_position*/);
+	
 	pyramidMesh.drawLine(view, projection, pyramid_model, vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 	GLfloat line_vertices[] = {
@@ -154,6 +160,53 @@ void display()
 	closest_model = translate(closest_model, closestPoint);
 	vec4 closest_colour = vec4(0.2f, 0.2f, 1.0f, 0.8f);
 	pointMesh.drawMesh(view, projection, closest_model, closest_colour);
+
+	if (featureType == 0)
+	{
+		GLfloat vertex_array[] = {
+			p1.v[0], p1.v[1], p1.v[2]
+		};
+		vertexMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+		vertexMesh.generateObjectBufferMesh(vertex_array, 1);
+
+		mat4 vertex_model = identity_mat4();
+		vec4 vertex_colour = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+		glPointSize(20.0f);
+		vertexMesh.drawPoint(view, projection, vertex_model, vertex_colour);
+		glPointSize(1.0f);
+	}
+	else if (featureType == 1)
+	{
+		GLfloat edge_array[] = {
+			p1.v[0], p1.v[1], p1.v[2],
+			p2.v[0], p2.v[1], p2.v[2]
+		};
+		edgeMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+		edgeMesh.generateObjectBufferMesh(edge_array, 2);
+
+		mat4 edge_model = identity_mat4();
+		vec4 edge_colour = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+		glLineWidth(10.0f);
+		edgeMesh.drawLine(view, projection, edge_model, edge_colour);
+		glLineWidth(1.0f);
+	}
+	else if (featureType == 2)
+	{
+		GLfloat face_array[] = {
+			p1.v[0], p1.v[1], p1.v[2],
+			p2.v[0], p2.v[1], p2.v[2],
+			p3.v[0], p3.v[1], p3.v[2]
+		};
+		faceMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
+		faceMesh.generateObjectBufferMesh(face_array, 3);
+
+		mat4 face_model = identity_mat4();
+		//face_model = scale(face_model, vec3(1.001f, 1.001f, 1.001f));
+		vec4 face_colour = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+		faceMesh.drawMesh(view, projection, face_model, face_colour);
+	}
+
+	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour/*, light_colour, light_position, view_position*/);
 
 	//skyboxMesh.drawSkybox(view, projection);
 
@@ -194,6 +247,33 @@ void processInput()
 	if (keys['x'])
 		point0 += vec3(0.0f, 0.0f, 0.001f);
 
+	if (keys['1'])
+		point0 = point1 * 2;
+	if (keys['2'])
+		point0 = point2 * 2;
+	if (keys['3'])
+		point0 = point3 * 2;
+	if (keys['4'])
+		point0 = point4 * 2;
+	if (keys['5'])
+		point0 = vec3(0.0f, -2.0f, 2.0f);
+	if (keys['6'])
+		point0 = vec3(-2.0f, -2.0f, -2.0f);
+	if (keys['7'])
+		point0 = vec3(2.0f, -2.0f, -2.0f);
+	if (keys['8'])
+		point0 = vec3(0.0f, 1.0f, 2.0f);
+	if (keys['9'])
+		point0 = vec3(1.0f, 0.5f, -0.5f);
+	if (keys['0'])
+	{
+		point0 = vec3(0.0f, 0.0f, 0.0f);
+		orientation.q[0] = 0.0f;
+		orientation.q[1] = 0.0f;
+		orientation.q[2] = 1.0f;
+		orientation.q[3] = 0.0f;
+	}
+
 	/*if (keys['t'])
 		applyYaw(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
 	if (keys['y'])
@@ -215,7 +295,8 @@ void updateScene()
 {
 	processInput();
 	//closestPoint = closestPointOnTriangleVoronoi(point0, point1, point2, point3);
-	closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4);
+	//closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4);
+	closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4, &p1, &p2, &p3, &featureType);
 	//updateRigidBody();
 	// Draw the next frame
 	glutPostRedisplay();
@@ -297,32 +378,6 @@ void init()
 void pressNormalKeys(unsigned char key, int x, int y)
 {
 	keys[key] = true;
-	if (keys['1'])
-		point0 = point1 * 2;
-	if (keys['2'])
-		point0 = point2 * 2;
-	if (keys['3'])
-		point0 = point3 * 2;
-	if (keys['4'])
-		point0 = point4 * 2;
-	if (keys['5'])
-		point0 = vec3(0.0f, -2.0f, 2.0f);
-	if (keys['6'])
-		point0 = vec3(-2.0f, -2.0f, -2.0f);
-	if (keys['7'])
-		point0 = vec3(2.0f, -2.0f, -2.0f);
-	if (keys['8'])
-		point0 = vec3(0.0f, 1.0f, 2.0f);
-	if (keys['9'])
-		point0 = vec3(1.0f, 0.5f, -0.5f);
-	if (keys['0'])
-	{
-		point0 = vec3(0.0f, 0.0f, 0.0f);
-		orientation.q[0] = 0.0f;
-		orientation.q[1] = 0.0f;
-		orientation.q[2] = 1.0f;
-		orientation.q[3] = 0.0f;
-	}
 }
 
 void releaseNormalKeys(unsigned char key, int x, int y)
