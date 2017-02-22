@@ -32,9 +32,6 @@
     <ClInclude Include="Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RigidBody.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Shader_Functions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,9 +42,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Distance.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PlaneRotation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

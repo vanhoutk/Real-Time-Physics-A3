@@ -19,8 +19,6 @@
 #include "Camera.h"
 #include "Distance.h"
 #include "Mesh.h"
-#include "PlaneRotation.h"
-#include "RigidBody.h"
 #include "Shader_Functions.h"
 #include "text.h"
 #include "time.h"
@@ -44,7 +42,7 @@ enum Shaders { SKYBOX, PARTICLE_SHADER, BASIC_TEXTURE_SHADER, LIGHT_SHADER };
 enum Textures { OBJECT_TEXTURE };
 GLfloat cameraSpeed = 0.005f;
 GLfloat deltaTime = 1.0f / 60.0f;
-GLfloat lastX = 400, lastY = 300;
+GLuint lastX = 400, lastY = 300;
 GLuint shaderProgramID[NUM_SHADERS];
 int screenWidth = 1000;
 int screenHeight = 800;
@@ -66,8 +64,6 @@ vec3 p3 = vec3(0.0f, 0.0f, 0.0f);
 vec4 upV = vec4(0.0f, 1.0f, 0.0f, 0.0f);
 vec4 fV = vec4(0.0f, 0.0f, 1.0f, 0.0f);
 vec4 rightV = vec4(1.0f, 0.0f, 0.0f, 0.0f);
-versor orientation;
-mat4 rotationMat;
 
 // | Resource Locations
 const char * meshFiles[NUM_MESHES] = { "../Meshes/cube.dae", "../Meshes/particle_reduced.dae" };
@@ -87,19 +83,17 @@ string frf(const float &f)
 
 void draw_text()
 {
-	ostringstream distanceOSS, pointOSS, closestOSS;
-	string distanceString, pointString, closestString;
-	distanceOSS << "Distance: " << fixed << setprecision(3) << pointToPoint(point0, closestPoint);
-	pointOSS << "Point Location ( " << fixed << setprecision(3) << point0.v[0] << ", " << point0.v[1] << ", " << point0.v[2] << " )";
-	closestOSS << "Closest Point ( " << fixed << setprecision(3) << closestPoint.v[0] << ", " << closestPoint.v[1] << ", " << closestPoint.v[2] << " )";
+	ostringstream oss[3];
+	string strings[3]; 
+	oss[0] << "Distance: " << fixed << setprecision(3) << pointToPoint(point0, closestPoint);
+	oss[1] << "Point Location ( " << fixed << setprecision(3) << point0.v[0] << ", " << point0.v[1] << ", " << point0.v[2] << " )";
+	oss[2] << "Closest Point ( " << fixed << setprecision(3) << closestPoint.v[0] << ", " << closestPoint.v[1] << ", " << closestPoint.v[2] << " )";
 	
-	distanceString = distanceOSS.str();
-	pointString = pointOSS.str();
-	closestString = closestOSS.str();
-	
-	update_text(stringIDs[0], distanceString.c_str());
-	update_text(stringIDs[1], pointString.c_str());
-	update_text(stringIDs[2], closestString.c_str());
+	for (int i = 0; i < 3; i++)
+	{
+		strings[i] = oss[i].str();
+		update_text(stringIDs[i], strings[i].c_str());
+	}
 
 	draw_texts();
 }
@@ -119,8 +113,6 @@ void display()
 	glClearColor(0.0f/255.0f, 0.0f/255.0f, 0.0f/255.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Draw skybox first
-	//mat4 view = look_at(camera.Position, vec3(0.0f, 0.0f, 0.0f), camera.Up);
 	mat4 view = camera.GetViewMatrix();
 	mat4 projection = perspective(camera.Zoom, (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 	//mat4 triangle_model = identity_mat4();
@@ -128,12 +120,11 @@ void display()
 
 	//triangleMesh.drawMesh(view, projection, triangle_model, triangle_colour);
 
-	mat4 pyramid_model = rotationMat;
+	mat4 pyramid_model = identity_mat4();
 	vec4 pyramid_colour = vec4(1.0f, 0.2f, 0.2f, 1.0f);
 	vec4 light_colour = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	vec4 light_position = vec4(5.0f, 5.0f, 5.0f, 0.0f);
 	vec4 view_position = vec4(camera.Position.v[0], camera.Position.v[1], camera.Position.v[2], 0.0f);
-
 	
 	pyramidMesh.drawLine(view, projection, pyramid_model, vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
@@ -206,17 +197,7 @@ void display()
 		faceMesh.drawMesh(view, projection, face_model, face_colour);
 	}
 
-	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour/*, light_colour, light_position, view_position*/);
-
-	//skyboxMesh.drawSkybox(view, projection);
-
-	//mat4 objectModel = identity_mat4();
-	//objectModel = rigidBody.rotation * objectModel;
-	//objectModel = translate(objectModel, rigidBody.position);
-
-	//objectMesh.drawMesh(view, projection, objectModel);
-
-	
+	pyramidMesh.drawMesh(view, projection, pyramid_model, pyramid_colour);
 
 	draw_text();
 	
@@ -266,26 +247,7 @@ void processInput()
 	if (keys['9'])
 		point0 = vec3(1.0f, 0.5f, -0.5f);
 	if (keys['0'])
-	{
 		point0 = vec3(0.0f, 0.0f, 0.0f);
-		orientation.q[0] = 0.0f;
-		orientation.q[1] = 0.0f;
-		orientation.q[2] = 1.0f;
-		orientation.q[3] = 0.0f;
-	}
-
-	/*if (keys['t'])
-		applyYaw(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-	if (keys['y'])
-		applyYaw(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
-	if (keys['g'])
-		applyRoll(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-	if (keys['h'])
-		applyRoll(radians(1.0f), rotationMat, upV, fV, rightV, orientation);
-	if (keys['b'])
-		applyPitch(radians(-1.0f), rotationMat, upV, fV, rightV, orientation);
-	if (keys['n'])
-		applyPitch(radians(1.0f), rotationMat, upV, fV, rightV, orientation);*/
 
 	if (keys[(char)27])
 		exit(0);
@@ -295,9 +257,7 @@ void updateScene()
 {
 	processInput();
 	//closestPoint = closestPointOnTriangleVoronoi(point0, point1, point2, point3);
-	//closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4);
 	closestPoint = closestPointOnPyramidVoronoi(point0, point1, point2, point3, point4, &p1, &p2, &p3, &featureType);
-	//updateRigidBody();
 	// Draw the next frame
 	glutPostRedisplay();
 }
@@ -316,23 +276,6 @@ void init()
 	{
 		shaderProgramID[i] = CompileShaders(vertexShaderNames[i], fragmentShaderNames[i]);
 	}
-
-	orientation = quat_from_axis_deg(0.0f, rightV.v[0], rightV.v[1], rightV.v[2]);
-	rotationMat = quat_to_mat4(orientation);
-	applyYaw(0.0f, rotationMat, upV, fV, rightV, orientation);
-
-	//skyboxMesh = Mesh(&shaderProgramID[SKYBOX]);
-	//skyboxMesh.setupSkybox(skyboxTextureFiles);
-
-	//objectMesh = Mesh(&shaderProgramID[BASIC_TEXTURE_SHADER]);
-	//objectMesh.generateObjectBufferMesh(meshFiles[OBJECT_MESH]);
-	//objectMesh.loadTexture(textureFiles[OBJECT_TEXTURE]);
-
-	//rigidBody = RigidBody(objectMesh.vertex_count, objectMesh.vertex_positions);
-
-	GLfloat point_vertex[] = {
-		0.0f, 0.0f, 0.0f
-	};
 
 	GLfloat triangle_vertices[] = {
 		point1.v[0], point1.v[1], point1.v[2],
@@ -366,9 +309,6 @@ void init()
 
 	pyramidMesh = Mesh(&shaderProgramID[PARTICLE_SHADER]);
 	pyramidMesh.generateObjectBufferMesh(pyramid_vertices, 12);
-	//pyramidMesh.generateObjectBufferMesh(meshFiles[POINT_MESH]);
-	
-	//pointMesh.generateObjectBufferMesh(pointVertex, 1);
 }
 
 /*
@@ -407,13 +347,13 @@ void processMouse(int x, int y)
 		firstMouse = false;
 	}
 
-	GLfloat xoffset = x - lastX;
-	GLfloat yoffset = lastY - y;
+	int xoffset = x - lastX;
+	int yoffset = lastY - y;
 
 	lastX = x;
 	lastY = y;
 
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	camera.ProcessMouseMovement((GLfloat)xoffset, (GLfloat)yoffset);
 }
 
 void mouseWheel(int button, int dir, int x, int y)
@@ -425,7 +365,7 @@ void mouseWheel(int button, int dir, int x, int y)
  */
 int main(int argc, char** argv) 
 {
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 
 	// Set up the window
 	glutInit(&argc, argv);
